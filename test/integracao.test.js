@@ -165,6 +165,10 @@ test('API Xtream: login, canais, filmes, séries e arquivo com Range', async () 
   const login = await (await get(`/player_api.php?${q}`)).json();
   assert.equal(login.user_info.auth, 1);
   assert.equal((await get('/player_api.php?username=dono&password=errada')).status, 401);
+  // login enviado por POST de formulário (alguns apps fazem assim)
+  const porPost = await get('/player_api.php', { method: 'POST', body: `username=dono&password=${ADMIN}`,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+  assert.equal((await porPost.json()).user_info.auth, 1);
   const vivos = await (await get(`/player_api.php?${q}&action=get_live_streams`)).json();
   assert.ok(vivos.some(c => c.name === 'Série'));
   const filmes = await (await get(`/player_api.php?${q}&action=get_vod_streams`)).json();

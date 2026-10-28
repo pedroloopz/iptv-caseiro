@@ -131,6 +131,19 @@ function tokenNaPlaylist(texto, token) {
   }).join('\n');
 }
 
+function lerTexto(req, limite) {
+  return new Promise((ok, falha) => {
+    let tam = 0;
+    const partes = [];
+    req.on('data', d => {
+      tam += d.length;
+      if (tam > limite) { falha(new Error('corpo grande demais')); req.destroy(); } else partes.push(d);
+    });
+    req.on('end', () => ok(Buffer.concat(partes).toString('utf8')));
+    req.on('error', falha);
+  });
+}
+
 function lerCorpo(req, limite = 2 * 1024 * 1024) {
   return new Promise((ok, falha) => {
     let tam = 0;
@@ -321,6 +334,12 @@ async function rotear(req, res) {
   const url = new URL(req.url, 'http://x');
   const rota = url.pathname;
   const ip = req.socket.remoteAddress;
+
+  // alguns apps Xtream mandam usuário/senha no corpo (POST de formulário), não no endereço
+  if (req.method === 'POST' && ['/player_api.php', '/get.php', '/xmltv.php'].includes(rota)) {
+    const corpo = await lerTexto(req, 64 * 1024).catch(() => '');
+    for (const [k, v] of new URLSearchParams(corpo)) if (!url.searchParams.has(k)) url.searchParams.set(k, v);
+  }
 
   if (req.method === 'OPTIONS') {
     return enviar(res, 204, '', 'text/plain', { 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE' });
