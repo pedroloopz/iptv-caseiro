@@ -395,7 +395,10 @@ async function rotear(req, res) {
   if (rota === '/admin' || rota === '/admin.html') return servirArquivo(req, res, path.join(P.publico, 'admin.html'));
 
   // ---------- daqui para baixo precisa de senha ----------
-  if (auth.bloqueado(ip)) return enviar(res, 429, 'muitas senhas erradas; tente de novo em 15 minutos');
+  if (auth.bloqueado(ip)) {
+    console.warn(`[acesso] ${ip} bloqueado tentou ${req.method} ${rota}`);
+    return enviar(res, 429, 'muitas senhas erradas; tente de novo em 15 minutos');
+  }
   const xt = xtream.resolverCaminho(rota);
   const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const credencial = xt ? { senha: xt.senha, usuario: xt.usuario }
@@ -404,6 +407,9 @@ async function rotear(req, res) {
   const usuario = auth.porSenha(credencial.senha, credencial.usuario ?? undefined);
   if (!usuario) {
     if (credencial.senha) auth.registrarFalha(ip);
+    // registro para diagnóstico (sem a senha): mostra o que cada app pede
+    console.warn(`[acesso] login recusado: ${req.method} ${rota} usuário="${credencial.usuario ?? '(só token)'}" ` +
+      `${credencial.senha ? 'senha errada' : 'sem senha'} ip=${ip} app="${(req.headers['user-agent'] || '').slice(0, 60)}"`);
     return rota === '/player_api.php' ? json(res, { user_info: { auth: 0 } }, 401) : enviar(res, 401, 'senha inválida');
   }
   const token = auth.aberto() ? '' : usuario.senha;
@@ -465,6 +471,7 @@ async function rotear(req, res) {
     if (!usuario.admin) return enviar(res, 403, 'só administradores');
     return rotaAdmin(req, res, m[1]);
   }
+  console.warn(`[acesso] endereço desconhecido: ${req.method} ${rota} app="${(req.headers['user-agent'] || '').slice(0, 60)}"`);
   enviar(res, 404, 'não encontrado');
 }
 
