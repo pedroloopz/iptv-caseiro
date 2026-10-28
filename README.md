@@ -255,7 +255,7 @@ link em uso cai, passa para o reserva sozinho, inclusive no meio de uma requisi�
 
 | Campo | Padrão | O que faz |
 |---|---|---|
-| `listas` | iptv-org e Free-TV: Brasil, Portugal, Japão e Alemanha | URLs `.m3u`, ou `{ "url": "…", "grupo": "Alemanha" }` para juntar os canais da lista num grupo |
+| `listas` | iptv-org e Free-TV: Brasil, Portugal, Japão e Alemanha | URLs `.m3u`, ou `{ "url": "…", "grupo": "Alemanha", "categorias": ["Movies", "Series"] }`: `grupo` junta os canais da lista num grupo; `categorias` mantém só essas categorias do iptv-org |
 | `atualizarACadaHoras` | `6` | intervalo entre downloads |
 | `excluirGrupos` | `[]` | ex.: `["Shop", "Religious"]` |
 | `excluirNaoVinteQuatroHoras` | `false` | remove canais `[Not 24/7]` |

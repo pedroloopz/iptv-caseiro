@@ -51,7 +51,9 @@ before(async () => {
         `#EXTINF:-1 tvg-id="Publico.br@SD" group-title="News",Canal Público (1080p)`, `http://127.0.0.1:${portaFonte}/morto.m3u8`,
         `#EXTINF:-1 tvg-id="Publico.br@SD" group-title="News",Canal Público (480p)`, `http://127.0.0.1:${portaFonte}/vivo.m3u8`,
         `#EXTINF:-1 tvg-id="Exige.br@SD" group-title="Movies",Exige Referer`, '#EXTVLCOPT:http-referrer=https://exige.com.br/',
-        `http://127.0.0.1:${portaFonte}/vivo.m3u8?ref=1`].join('\n'));
+        `http://127.0.0.1:${portaFonte}/vivo.m3u8?ref=1`,
+        ...(req.url.includes('?2') ? ['#EXTINF:-1 tvg-id="Filmes.us" group-title="Movies;Classic",English Movies', `http://127.0.0.1:${portaFonte}/vivo.m3u8?en=1`,
+          '#EXTINF:-1 tvg-id="Noticias.us" group-title="News",English News', `http://127.0.0.1:${portaFonte}/vivo.m3u8?en=2`] : [])].join('\n'));
     } else if (fs.existsSync(f) && !req.url.startsWith('/morto')) {
       res.writeHead(200, { 'Content-Type': f.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp2t' });
       fs.createReadStream(f).pipe(res);
@@ -75,7 +77,8 @@ before(async () => {
 
   const json = (f, d) => fs.writeFileSync(path.join(RAIZ, f), JSON.stringify(d));
   json('channels.json', [{ id: 'serie', nome: 'Série', grupo: 'Japonês', tipo: 'pasta', origem: 'midia/serie', idiomaLegenda: 'ja' }]);
-  json('fontes.json', { listas: [`http://127.0.0.1:${portaFonte}/lista.m3u`], testarStreams: false });
+  json('fontes.json', { listas: [`http://127.0.0.1:${portaFonte}/lista.m3u`,
+    { url: `http://127.0.0.1:${portaFonte}/lista.m3u?2`, grupo: 'Inglês', categorias: ['Movies'] }], testarStreams: false });
   fs.writeFileSync(path.join(RAIZ, 'python-falso'), PYTHON_FALSO, { mode: 0o755 });
   json('config.json', { qualidades: ['480p', '360p'], segundosSegmento: 2,
     transcricao: { ativo: true, python: path.join(RAIZ, 'python-falso') } });
@@ -189,6 +192,10 @@ test('guia de programação gerado pela pasta da série', async () => {
   assert.match(xml, /<channel id="serie">/);
   assert.match(xml, /<programme channel="serie" start="\d{14} [+-]\d{4}"[^>]*><title>Ep0[12]<\/title>/);
   assert.match(xml, /<channel id="x-publico-br-sd">/);
+  // filtro de categoria da 2ª lista: entra o de filmes, não o de notícias
+  const canais = (await (await get(tok('/api/canais'))).json()).canais;
+  assert.equal(canais.find(c => c.nome === 'English Movies')?.grupo, 'Inglês');
+  assert.equal(canais.some(c => c.nome === 'English News'), false);
 });
 
 test('painel: só administrador; favoritos aplicados sem reiniciar; validação', async () => {
