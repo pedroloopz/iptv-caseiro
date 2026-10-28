@@ -23,6 +23,15 @@ const { sondar } = require('./lib/midia');
 const { spawn } = require('child_process');
 
 const PORTA = Number(process.env.PORT) || 8080;
+// versão do código (commit do git), para conferir se a atualização entrou: /saude
+const VERSAO = (() => {
+  try {
+    return require('child_process').execFileSync('git', ['-C', __dirname, 'log', '-1', '--format=%h %cs'],
+      { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return 'desconhecida';
+  }
+})();
 const INICIO = Date.now();
 const { P } = config;
 
@@ -375,7 +384,7 @@ async function rotear(req, res) {
     return enviar(res, 204, '', 'text/plain', { 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE' });
   }
   if (rota === '/saude') {
-    return json(res, { ok: true, desde: new Date(INICIO).toISOString(), canais: canais.visiveis().length,
+    return json(res, { ok: true, versao: VERSAO, desde: new Date(INICIO).toISOString(), canais: canais.visiveis().length,
       transmissoes: transmissao.ativas.size, listaAtualizadaEm: canais.atualizadoEm() });
   }
 
