@@ -1,0 +1,19 @@
+services:
+  iptv:
+    build:
+      context: .
+      args:
+        TRANSCRICAO: "0"     # "1" instala a legenda automática em japonês (Whisper + MeCab)
+    container_name: iptv
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./dados-docker:/dados                       # channels.json, usuarios.json, config.json…
+      # - /caminho/dos/seus/videos:/dados/midia:ro
+      # - /caminho/dos/filmes-e-series:/dados/biblioteca:ro
+    # placa de vídeo Intel/AMD (config.json: "aceleracao": "vaapi"):
+    # devices:
+    #   - /dev/dri:/dev/dri

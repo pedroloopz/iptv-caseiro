@@ -1,0 +1,14 @@
+{
+  "name": "iptv-caseiro",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Servidor IPTV caseiro: canais ao vivo dos seus vídeos, canais públicos do iptv-org, filmes/séries e API Xtream",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "atualizar": "node atualizar.js",
+    "test": "node --test test/unidade.test.js test/integracao.test.js"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}

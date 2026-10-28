@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel da TV</title>
+<style>
+  :root { --fundo: #0f1115; --painel: #181b22; --texto: #e8e8ea; --suave: #8a8f9c; --destaque: #4f8cff;
+          --borda: #ffffff1a; --ok: #30a46c; --erro: #e5484d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--fundo); color: var(--texto); }
+  .topo { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--painel); position: sticky; top: 0; z-index: 2; flex-wrap: wrap; }
+  .topo h1 { font-size: 18px; margin: 0; }
+  .topo a { color: var(--suave); text-decoration: none; font-size: 14px; }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+  button { padding: 8px 12px; border: 0; border-radius: 8px; background: #ffffff12; color: inherit; font: inherit; cursor: pointer; }
+  button:hover { background: #ffffff20; }
+  button.primario, nav button.ativo { background: var(--destaque); }
+  main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+  section { display: none; } section.ativa { display: block; }
+  h2 { font-size: 16px; margin: 4px 0 12px; }
+  p.ajuda { color: var(--suave); font-size: 13px; margin: 0 0 12px; }
+  .cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .cartao { background: var(--painel); border-radius: 10px; padding: 14px; }
+  .cartao b { display: block; font-size: 22px; margin-top: 4px; }
+  .cartao span { color: var(--suave); font-size: 13px; }
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  input, textarea, select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--borda); background: var(--fundo); color: inherit; font: inherit; }
+  textarea { width: 100%; min-height: 380px; font-family: ui-monospace, monospace; font-size: 13px; line-height: 1.5; }
+  .tabela { overflow-x: auto; background: var(--painel); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid var(--borda); text-align: left; white-space: nowrap; }
+  th { color: var(--suave); font-weight: normal; font-size: 12px; text-transform: uppercase; position: sticky; top: 0; background: var(--painel); }
+  td input[type=number] { width: 70px; }
+  td.nome { white-space: normal; min-width: 180px; }
+  .ok { color: var(--ok); } .erro { color: var(--erro); } .suave { color: var(--suave); }
+  #aviso { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); padding: 10px 16px; border-radius: 8px;
+           background: var(--painel); border: 1px solid var(--borda); display: none; max-width: calc(100% - 32px); z-index: 5; }
+  .filtros { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .filtros input[type=search] { flex: 1; min-width: 200px; }
+  #login { max-width: 360px; margin: 80px auto; display: none; gap: 10px; padding: 16px; }
+</style>
+</head>
+<body>
+<form id="login">
+  <h1>⚙ Painel da TV</h1>
+  <input id="senha" type="password" placeholder="Senha de administrador" required>
+  <button class="primario">Entrar</button>
+  <small id="erro-login" class="erro"></small>
+</form>
+<div id="app" hidden>
+  <div class="topo">
+    <h1>⚙ Painel</h1><a href="/">← voltar para a TV</a>
+    <nav>
+      <button data-sec="inicio" class="ativo">Início</button>
+      <button data-sec="canais">Canais</button>
+      <button data-sec="meus">Meus canais</button>
+      <button data-sec="usuarios">Usuários</button>
+      <button data-sec="ajustes">Ajustes</button>
+    </nav>
+  </div>
+  <main>
+    <section id="inicio" class="ativa">
+      <div class="cartoes" id="cartoes"></div>
+      <div class="acoes">
+        <button class="primario" data-acao="atualizar">Atualizar lista pública agora</button>
+        <button data-acao="verificar">Testar links agora</button>
+        <button data-acao="biblioteca">Reler biblioteca</button>
+        <button data-acao="transcrever">Gerar legendas japonesas agora</button>
+      </div>
+      <p class="ajuda" id="info-transcricao"></p>
+      <p class="ajuda" id="aviso-livre"></p>
+    </section>
+
+    <section id="canais">
+      <h2>Canais</h2>
+      <p class="ajuda">★ = favorito (vai para o topo e para o grupo Favoritos). Ocultos somem da TV e dos apps. Número vazio = automático.</p>
+      <div class="filtros">
+        <input id="filtro" type="search" placeholder="Filtrar por nome ou grupo…">
+        <select id="mostrar"><option value="">todos</option><option value="fav">favoritos</option><option value="oculto">ocultos</option><option value="fora">fora do ar</option><option value="meus">meus canais</option></select>
+        <button class="primario" id="salvar-prefs">Salvar</button>
+      </div>
+      <div class="tabela"><table>
+        <thead><tr><th>★</th><th>Oculto</th><th>Nº</th><th>Canal</th><th>Grupo</th><th>Situação</th></tr></thead>
+        <tbody id="tbody-canais"></tbody>
+      </table></div>
+    </section>
+
+    <section id="meus">
+      <h2>Meus canais (channels.json)</h2>
+      <p class="ajuda">Tipos: teste, arquivo, pasta, url. Exemplos e todos os campos no README. Salvar valida antes de gravar e aplica sem reiniciar.</p>
+      <textarea id="txt-meus" spellcheck="false"></textarea>
+      <div class="acoes" style="margin-top:10px"><button class="primario" data-salvar="meus-canais" data-campo="txt-meus">Salvar</button></div>
+    </section>
+
+    <section id="usuarios">
+      <h2>Usuários</h2>
+      <p class="ajuda">Cada pessoa ou aparelho com sua senha. A senha também é o token dos links (?token=) e serve nos apps Xtream. Desativar corta o acesso na hora.</p>
+      <div class="tabela"><table>
+        <thead><tr><th>Usuário</th><th>Senha</th><th>Admin</th><th>Ativo</th><th></th></tr></thead>
+        <tbody id="tbody-usuarios"></tbody>
+      </table></div>
+      <div class="acoes" style="margin-top:10px">
+        <button id="novo-usuario">+ Novo usuário</button>
+        <button class="primario" id="salvar-usuarios">Salvar</button>
+      </div>
+    </section>
+
+    <section id="ajustes">
+      <h2>config.json</h2>
+      <p class="ajuda">aceleracao, qualidades, tmdbApiKey, linksDiretos, https… (campos no README)</p>
+      <textarea id="txt-config" spellcheck="false" style="min-height:220px"></textarea>
+      <div class="acoes" style="margin-top:10px"><button class="primario" data-salvar="config" data-campo="txt-config">Salvar config</button></div>
+      <h2>fontes.json</h2>
+      <p class="ajuda">Listas do iptv-org, frequência de atualização, filtros e guias externos.</p>
+      <textarea id="txt-fontes" spellcheck="false" style="min-height:260px"></textarea>
+      <div class="acoes" style="margin-top:10px"><button class="primario" data-salvar="fontes" data-campo="txt-fontes">Salvar fontes</button></div>
+    </section>
+  </main>
+</div>
+<div id="aviso"></div>
+<script>
+const $ = s => document.querySelector(s);
+const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const lembrar = (k, p) => { try { const v = localStorage.getItem(k); return v === null ? p : JSON.parse(v); } catch { return p; } };
+let token = lembrar('token', '');
+let estado = null, prefs = null, usuarios = [];
+
+function aviso(msg, erro = false) {
+  const a = $('#aviso');
+  a.textContent = msg;
+  a.className = erro ? 'erro' : 'ok';
+  a.style.display = 'block';
+  clearTimeout(aviso.t);
+  aviso.t = setTimeout(() => { a.style.display = 'none'; }, erro ? 8000 : 3000);
+}
+
+async function api(metodo, rota, corpo) {
+  const r = await fetch(`/api/admin/${rota}`, {
+    method: metodo,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: corpo === undefined ? undefined : JSON.stringify(corpo),
+  });
+  if (r.status === 401 || r.status === 403) { mostrarLogin(r.status === 403 ? 'Esse usuário não é administrador.' : ''); throw new Error('login'); }
+  const dados = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(dados.erro || `HTTP ${r.status}`);
+  return dados;
+}
+
+function mostrarLogin(msg = '') {
+  $('#app').hidden = true;
+  $('#login').style.display = 'grid';
+  $('#erro-login').textContent = msg;
+}
+$('#login').onsubmit = async e => {
+  e.preventDefault();
+  token = $('#senha').value;
+  guardar('token', token);
+  try { await carregar(); } catch (err) { if (err.message !== 'login') mostrarLogin(err.message); else mostrarLogin('Senha incorreta.'); }
+};
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('ativo', x === b));
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('ativa', s.id === b.dataset.sec));
+});
+
+function cartoes() {
+  const ext = estado.canais.filter(c => !c.local);
+  const fora = ext.filter(c => c.noAr === false).length;
+  const dados = [
+    ['Canais visíveis', estado.canais.filter(c => !c.oculto).length],
+    ['Canais públicos no ar', `${ext.length - fora}/${ext.length}`],
+    ['Ligados agora', estado.canais.filter(c => c.ligado).length],
+    ['Filmes / séries', `${estado.biblioteca.filmes} / ${estado.biblioteca.series}`],
+    ['Lista pública', estado.listaAtualizadaEm ? new Date(estado.listaAtualizadaEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'ainda não baixada'],
+  ];
+  $('#cartoes').replaceChildren(...dados.map(([t, v]) => {
+    const d = document.createElement('div');
+    d.className = 'cartao';
+    d.append(Object.assign(document.createElement('span'), { textContent: t }), Object.assign(document.createElement('b'), { textContent: v }));
+    return d;
+  }));
+  const t = estado.transcricao;
+  $('#info-transcricao').textContent = !t.ativo
+    ? 'Legenda automática em japonês: desligada (Ajustes → "transcricao": { "ativo": true }).'
+    : `Legenda automática (${t.motor}, modelo ${t.modelo}): ${t.feitas} prontas · ${t.fila} na fila` +
+      `${t.atual ? ` · transcrevendo "${t.atual}"` : ''} · ${t.naoJapones} sem áudio japonês · ${t.erros} com erro` +
+      `${t.ultimoErro ? ` (último: ${t.ultimoErro})` : ''}`;
+  $('#aviso-livre').textContent = estado.acessoLivre
+    ? '⚠ Sem usuários cadastrados: qualquer um na sua rede abre a TV e este painel. Crie um usuário administrador em "Usuários".' : '';
+}
+
+function celula(conteudo, cls) {
+  const td = document.createElement('td');
+  if (cls) td.className = cls;
+  if (conteudo instanceof Node) td.append(conteudo); else td.textContent = conteudo ?? '';
+  return td;
+}
+function caixa(marcada, ao) {
+  const i = Object.assign(document.createElement('input'), { type: 'checkbox', checked: marcada });
+  i.onchange = () => ao(i.checked);
+  return i;
+}
+
+function tabelaCanais() {
+  const filtro = $('#filtro').value.toLowerCase();
+  const mostrar = $('#mostrar').value;
+  const linhas = [];
+  for (const c of estado.canais) {
+    const fav = prefs.favoritos.includes(c.id), oculto = prefs.ocultos.includes(c.id);
+    if (filtro && !`${c.nome} ${c.grupo} ${c.id}`.toLowerCase().includes(filtro)) continue;
+    if (mostrar === 'fav' && !fav) continue;
+    if (mostrar === 'oculto' && !oculto) continue;
+    if (mostrar === 'fora' && c.noAr !== false) continue;
+    if (mostrar === 'meus' && !c.local) continue;
+    if (linhas.length >= 400) break; // a busca encontra o resto
+    const tr = document.createElement('tr');
+    const num = Object.assign(document.createElement('input'), { type: 'number', min: 1, value: prefs.numeros[c.id] || '', placeholder: c.numero || '' });
+    num.onchange = () => { if (num.value) prefs.numeros[c.id] = Number(num.value); else delete prefs.numeros[c.id]; };
+    const situacao = c.local ? (c.ligado ? '● transmitindo' : 'seu canal')
+      : c.noAr === false ? 'fora do ar' : `no ar · ${c.links} link${c.links > 1 ? 's' : ''}`;
+    tr.append(
+      celula(caixa(fav, v => { prefs.favoritos = v ? [...prefs.favoritos, c.id] : prefs.favoritos.filter(x => x !== c.id); })),
+      celula(caixa(oculto, v => { prefs.ocultos = v ? [...prefs.ocultos, c.id] : prefs.ocultos.filter(x => x !== c.id); })),
+      celula(num), celula(c.nome, 'nome'), celula(c.grupo || '', 'suave'),
+      celula(situacao, c.noAr === false ? 'erro' : c.local ? 'suave' : 'ok'));
+    linhas.push(tr);
+  }
+  $('#tbody-canais').replaceChildren(...linhas);
+}
+$('#filtro').oninput = tabelaCanais;
+$('#mostrar').onchange = tabelaCanais;
+$('#salvar-prefs').onclick = async () => {
+  try { await api('PUT', 'preferencias', prefs); aviso('Preferências salvas.'); await carregar(); }
+  catch (e) { if (e.message !== 'login') aviso(e.message, true); }
+};
+
+function tabelaUsuarios() {
+  $('#tbody-usuarios').replaceChildren(...usuarios.map((u, i) => {
+    const tr = document.createElement('tr');
+    const nome = Object.assign(document.createElement('input'), { value: u.usuario, placeholder: 'nome' });
+    nome.oninput = () => { u.usuario = nome.value.trim(); };
+    const senha = Object.assign(document.createElement('input'), { value: u.senha, placeholder: 'mín. 8 caracteres' });
+    senha.oninput = () => { u.senha = senha.value; };
+    const gerar = Object.assign(document.createElement('button'), { textContent: 'gerar', type: 'button' });
+    gerar.onclick = async () => { u.senha = (await api('POST', 'gerar-senha')).senha; senha.value = u.senha; };
+    const tdSenha = celula(senha);
+    tdSenha.append(' ', gerar);
+    const remover = Object.assign(document.createElement('button'), { textContent: 'remover' });
+    remover.onclick = () => { usuarios.splice(i, 1); tabelaUsuarios(); };
+    tr.append(celula(nome), tdSenha, celula(caixa(u.admin, v => { u.admin = v; })), celula(caixa(u.ativo, v => { u.ativo = v; })), celula(remover));
+    return tr;
+  }));
+}
+$('#novo-usuario').onclick = async () => {
+  usuarios.push({ usuario: '', senha: (await api('POST', 'gerar-senha')).senha, admin: usuarios.length === 0, ativo: true });
+  tabelaUsuarios();
+};
+$('#salvar-usuarios').onclick = async () => {
+  try {
+    await api('PUT', 'usuarios', usuarios);
+    // se a minha senha mudou, continuo logado com a nova
+    const eu = usuarios.find(u => u.admin && u.ativo && u.senha === token) || usuarios.find(u => u.admin && u.ativo);
+    if (eu && eu.senha !== token && estado.acessoLivre) { token = eu.senha; guardar('token', token); }
+    aviso('Usuários salvos.');
+    await carregar();
+  } catch (e) { if (e.message !== 'login') aviso(e.message, true); }
+};
+
+document.querySelectorAll('[data-salvar]').forEach(b => b.onclick = async () => {
+  let dados;
+  try { dados = JSON.parse($(`#${b.dataset.campo}`).value); }
+  catch (e) { return aviso(`JSON inválido: ${e.message}`, true); }
+  try { await api('PUT', b.dataset.salvar, dados); aviso('Salvo e aplicado.'); await carregar(); }
+  catch (e) { if (e.message !== 'login') aviso(e.message, true); }
+});
+
+document.querySelectorAll('[data-acao]').forEach(b => b.onclick = async () => {
+  try { const r = await api('POST', b.dataset.acao); aviso(r.msg || 'Feito.'); setTimeout(carregar, 1500); }
+  catch (e) { if (e.message !== 'login') aviso(e.message, true); }
+});
+
+async function carregar() {
+  estado = await api('GET', 'estado');
+  prefs = { favoritos: [], ocultos: [], numeros: {}, ...estado.preferencias };
+  usuarios = estado.usuarios.map(u => ({ ...u }));
+  $('#login').style.display = 'none';
+  $('#app').hidden = false;
+  cartoes();
+  tabelaCanais();
+  tabelaUsuarios();
+  $('#txt-meus').value = JSON.stringify(estado.meusCanais, null, 2);
+  $('#txt-config').value = JSON.stringify(estado.config, null, 2);
+  $('#txt-fontes').value = JSON.stringify(estado.fontes, null, 2);
+}
+
+carregar().catch(e => { if (e.message !== 'login') mostrarLogin(e.message); });
+</script>
+</body>
+</html>

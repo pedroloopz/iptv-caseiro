@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minha TV</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<style>
+  :root { --fundo: #0f1115; --painel: #181b22; --texto: #e8e8ea; --suave: #8a8f9c; --destaque: #4f8cff; --borda: #ffffff1a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--fundo); color: var(--texto);
+         display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+  aside { background: var(--painel); display: flex; flex-direction: column; min-height: 0; }
+  header { padding: 16px 16px 8px; }
+  h1 { font-size: 18px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  h1 a { margin-left: auto; font-size: 13px; color: var(--suave); text-decoration: none; font-weight: normal; }
+  nav { display: flex; gap: 4px; margin-bottom: 10px; }
+  nav button { flex: 1; justify-content: center; padding: 8px; background: #ffffff0d; }
+  nav button.ativo { background: var(--destaque); }
+  #busca, select, input { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--borda);
+           background: var(--fundo); color: inherit; font: inherit; }
+  #info { font-size: 12px; color: var(--suave); margin: 8px 0 0; }
+  #lista { overflow-y: auto; padding: 0 16px 16px; flex: 1; }
+  h2 { font-size: 12px; text-transform: uppercase; color: var(--suave); margin: 16px 0 6px; letter-spacing: .05em; }
+  button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 9px 10px;
+           border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+  button:hover { background: #ffffff10; }
+  button.ativo { background: var(--destaque); }
+  button.acao { width: auto; display: inline-flex; background: #ffffff12; padding: 7px 11px; font-size: 14px; white-space: nowrap; }
+  button.acao:hover { background: #ffffff22; }
+  button.acao.ligado { background: var(--destaque); }
+  .num { color: var(--suave); font-size: 12px; min-width: 26px; text-align: right; }
+  button.ativo .num { color: inherit; }
+  button img { width: 32px; height: 22px; object-fit: contain; flex: none; }
+  .fora { opacity: .45; }
+  .marca { margin-left: auto; font-size: 12px; color: var(--suave); white-space: nowrap; }
+  main { display: flex; flex-direction: column; padding: 16px; gap: 10px; min-width: 0; min-height: 0; overflow-y: auto; }
+  #palco { position: relative; flex: 1; min-height: 240px; display: flex; background: #000; border-radius: 8px; }
+  #palco:fullscreen { border-radius: 0; }
+  video { width: 100%; height: 100%; min-height: 0; background: #000; border-radius: 8px; }
+  #controles, #painel-estudo { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  #controles label, #painel-estudo label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--suave); }
+  #controles select, #painel-estudo select { width: auto; padding: 6px 8px; }
+  #painel-estudo input[type=checkbox] { width: auto; }
+  #status { color: var(--suave); font-size: 14px; flex: 1; min-width: 200px; }
+  #m3u { font-size: 12px; color: var(--suave); word-break: break-all; }
+  #m3u code { color: var(--texto); }
+  .capa { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; }
+  .capa img { width: 44px; height: 64px; object-fit: cover; border-radius: 4px; background: #ffffff10; }
+  .capa small { color: var(--suave); display: block; }
+  #login { position: fixed; inset: 0; background: var(--fundo); display: none; place-items: center; z-index: 10; padding: 16px; }
+  #login form { width: min(360px, 100%); display: grid; gap: 10px; }
+  #login button { justify-content: center; background: var(--destaque); }
+
+  /* ---------- modo estudo ---------- */
+  #legenda-estudo { position: absolute; left: 0; right: 0; bottom: 56px; text-align: center; pointer-events: none; padding: 0 12px; }
+  #linha-jp, #linha-2 { display: inline-block; pointer-events: auto; background: #000000b8; border-radius: 6px; padding: 4px 10px; max-width: 100%; }
+  #linha-jp { font-size: clamp(20px, 3.2vw, 34px); line-height: 2; }
+  #linha-2 { font-size: clamp(14px, 2vw, 20px); color: #ffe08a; margin-top: 6px; }
+  #linha-jp:empty, #linha-2:empty { display: none; }
+  .token { cursor: pointer; border-radius: 4px; padding: 0 1px; }
+  .token:hover, .token.escolhido { background: #4f8cff66; }
+  rt { font-size: .5em; color: #c9d4ff; }
+  #painel-estudo { background: var(--painel); border-radius: 8px; padding: 10px; }
+  #estudo-msg { width: 100%; font-size: 13px; color: var(--suave); }
+  .janela { position: fixed; z-index: 20; background: var(--painel); border: 1px solid var(--borda); border-radius: 12px;
+            box-shadow: 0 10px 40px #0008; padding: 16px; }
+  #palavra { left: 50%; bottom: 24px; transform: translateX(-50%); width: min(460px, calc(100% - 24px)); }
+  #palavra .grande { font-size: 36px; line-height: 1.8; }
+  #palavra .linha { color: var(--suave); font-size: 14px; margin: 4px 0; }
+  #palavra ol { margin: 8px 0; padding-left: 20px; }
+  #palavra .botoes, #cartoes .botoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  #palavra a, #cartoes a { color: var(--destaque); }
+  #cartoes { inset: 24px; overflow-y: auto; max-width: 760px; margin: 0 auto; }
+  .cartao { border-bottom: 1px solid var(--borda); padding: 10px 0; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .cartao .jp { font-size: 20px; line-height: 2; }
+  .cartao small { color: var(--suave); display: block; }
+  @media (max-width: 760px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; }
+    main { order: -1; overflow: visible; } #palco { flex: none; aspect-ratio: 16/9; min-height: 0; } #lista { max-height: none; }
+    #legenda-estudo { bottom: 44px; }
+  }
+</style>
+</head>
+<body>
+<div id="login">
+  <form>
+    <h1>📺 Minha TV</h1>
+    <input id="senha" type="password" placeholder="Senha" autocomplete="current-password" required>
+    <button>Entrar</button>
+    <small id="erro-login" style="color:#e5484d"></small>
+  </form>
+</div>
+<aside>
+  <header>
+    <h1>📺 Minha TV <a id="link-admin" href="/admin" hidden>painel ⚙</a></h1>
+    <nav>
+      <button data-aba="tv" class="ativo">TV</button>
+      <button data-aba="filmes">Filmes</button>
+      <button data-aba="series">Séries</button>
+    </nav>
+    <input id="busca" type="search" placeholder="Buscar…" autocomplete="off">
+    <p id="info"></p>
+  </header>
+  <div id="lista"></div>
+</aside>
+<main>
+  <div id="palco">
+    <video id="video" controls autoplay playsinline crossorigin="anonymous"></video>
+    <div id="legenda-estudo" hidden><div><div id="linha-jp" lang="ja"></div></div><div><div id="linha-2"></div></div></div>
+  </div>
+  <div id="controles">
+    <div id="status">Escolha um canal. (↑/↓ trocam de canal)</div>
+    <button class="acao" id="btn-estudo" title="Modo estudo">🎓 Estudo</button>
+    <label>Legenda <select id="sel-legenda"><option value="-1">nenhuma</option></select></label>
+    <label>Qualidade <select id="sel-qualidade"><option value="-1">automática</option></select></label>
+  </div>
+  <div id="painel-estudo" hidden>
+    <button class="acao" id="est-anterior" title="Fala anterior (A)">⏮ Anterior</button>
+    <button class="acao" id="est-repetir" title="Repetir a fala (S)">🔁 Repetir</button>
+    <button class="acao" id="est-proxima" title="Próxima fala (D)">⏭ Próxima</button>
+    <label><input type="checkbox" id="est-pausar"> pausar a cada fala</label>
+    <label><input type="checkbox" id="est-furigana"> furigana</label>
+    <label>2ª legenda <select id="est-segunda"><option value="">nenhuma</option></select></label>
+    <label>Velocidade <select id="est-velocidade"><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option></select></label>
+    <button class="acao" id="est-salvar">⭐ Salvar frase</button>
+    <button class="acao" id="est-cartoes">📚 Cartões</button>
+    <button class="acao" id="est-tela">⛶ Tela cheia</button>
+    <div id="estudo-msg">Toque numa palavra para ver leitura e significado. Teclas: A anterior · S repetir · D próxima.</div>
+  </div>
+  <div id="m3u">Playlist para outros apps: <code id="link-m3u"></code></div>
+</main>
+<div id="palavra" class="janela" hidden></div>
+<div id="cartoes" class="janela" hidden></div>
+<script>
+const $ = s => document.querySelector(s);
+const video = $('#video'), status = $('#status'), selLeg = $('#sel-legenda'), selQual = $('#sel-qualidade');
+const guardar = (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const lembrar = (k, padrao) => { try { const v = localStorage.getItem(k); return v === null ? padrao : JSON.parse(v); } catch { return padrao; } };
+
+const daUrl = new URLSearchParams(location.search).get('token');
+if (daUrl) { guardar('token', daUrl); history.replaceState(null, '', location.pathname); }
+let token = lembrar('token', '');
+const comToken = u => token && !u.includes('token=') ? `${u}${u.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : u;
+const idiomaPref = l => (l === 'ja-Hrkt' ? 'jf' : l);
+const semAcento = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+let aba = 'tv', canais = [], bib = { filmes: [], series: [] }, hls = null, atual = null, serieAberta = null;
+
+async function api(caminho, metodo = 'GET', corpo) {
+  const r = await fetch(comToken(caminho), corpo === undefined ? { method: metodo }
+    : { method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+  if (r.status === 401) { pedirSenha(); throw new Error('senha'); }
+  if (!r.ok) {
+    const txt = await r.text();
+    let msg = txt;
+    try { msg = JSON.parse(txt).erro || txt; } catch {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+function pedirSenha(msg = '') {
+  $('#login').style.display = 'grid';
+  $('#erro-login').textContent = msg;
+  $('#senha').focus();
+}
+$('#login form').onsubmit = async e => {
+  e.preventDefault();
+  token = $('#senha').value;
+  guardar('token', token);
+  try { await carregar(); $('#login').style.display = 'none'; }
+  catch { pedirSenha('Senha incorreta.'); }
+};
+
+// ---------- reprodução ----------
+
+function limparPlayer() {
+  if (hls) { hls.destroy(); hls = null; }
+  video.removeAttribute('src');
+  video.querySelectorAll('track').forEach(t => t.remove());
+  selLeg.replaceChildren(new Option('nenhuma', -1));
+  selQual.replaceChildren(new Option('automática', -1));
+  zerarEstudo();
+}
+
+function tocarAoVivo(c) {
+  limparPlayer();
+  atual = { tipo: 'tv', id: c.id, titulo: `${c.numero} · ${c.nome}` };
+  guardar('ultimoCanal', c.id);
+  status.textContent = `Sintonizando ${c.numero} · ${c.nome}…`;
+  if (window.Hls && Hls.isSupported()) {
+    hls = new Hls({ manifestLoadingMaxRetry: 6, manifestLoadingRetryDelay: 2000, subtitleDisplay: true });
+    hls.loadSource(c.src);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      status.textContent = `▶ ${c.numero} · ${c.nome}`;
+      hls.levels.forEach((l, i) => selQual.append(new Option(l.name || (l.height ? `${l.height}p` : `nível ${i + 1}`), i)));
+      video.play().catch(() => {});
+    });
+    hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
+      selLeg.replaceChildren(new Option('nenhuma', -1));
+      hls.subtitleTracks.forEach((t, i) => selLeg.append(new Option(t.name || t.lang, i)));
+      // a escolha salva vale para todos os canais; sem escolha, a faixa padrão do canal
+      const pref = lembrar('legenda', null);
+      let idx = hls.subtitleTracks.findIndex(t => t.default);
+      if (pref === 'nenhuma') idx = -1;
+      else if (pref && hls.subtitleTracks.some(t => idiomaPref(t.lang) === pref)) idx = hls.subtitleTracks.findIndex(t => idiomaPref(t.lang) === pref);
+      hls.subtitleTrack = idx;
+      selLeg.value = idx;
+      if (estudo.ativo) aplicarEstudo();
+    });
+    hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH, (_, d) => { if (!estudo.ativo) selLeg.value = d.id; });
+    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) status.textContent = `Erro no canal: ${d.details}`; });
+  } else {
+    video.src = c.src; // Safari/iOS tocam HLS nativamente (legendas no menu do próprio player)
+    video.play().catch(() => {});
+    status.textContent = `▶ ${c.numero} · ${c.nome}`;
+  }
+}
+
+function aplicarLegendaNormal() {
+  const i = Number(selLeg.value);
+  if (hls) {
+    hls.subtitleDisplay = true;
+    hls.subtitleTrack = i;
+  } else {
+    [...video.textTracks].forEach((t, j) => { t.mode = j === i ? 'showing' : 'disabled'; });
+  }
+}
+
+selLeg.onchange = () => {
+  const i = Number(selLeg.value);
+  if (hls) guardar('legenda', i < 0 ? 'nenhuma' : idiomaPref(hls.subtitleTracks[i].lang));
+  else guardar('legenda', i < 0 ? 'nenhuma' : idiomaPref(video.textTracks[i]?.language));
+  if (!estudo.ativo) aplicarLegendaNormal();
+};
+selQual.onchange = () => { if (hls) hls.currentLevel = Number(selQual.value); };
+
+async function tocarArquivo(x, titulo) {
+  limparPlayer();
+  atual = { tipo: 'vod', id: x.id, titulo };
+  status.textContent = `▶ ${titulo}`;
+  video.src = x.src;
+  try {
+    const legs = await api(x.legendas);
+    const pref = lembrar('legenda', null);
+    legs.forEach((l, i) => {
+      const t = document.createElement('track');
+      const nome = l.nome + (l.automatica ? ' · automática' : '');
+      Object.assign(t, { kind: 'subtitles', srclang: l.codigo || l.idioma, label: nome, src: l.url });
+      video.append(t);
+      selLeg.append(new Option(nome, i));
+    });
+    // mostra a legenda preferida (ou a primeira) quando as faixas carregarem
+    setTimeout(() => {
+      const idx = pref === 'nenhuma' ? -1 : Math.max(0, legs.findIndex(l => l.idioma === pref));
+      selLeg.value = legs.length ? idx : -1;
+      if (estudo.ativo) aplicarEstudo(); else aplicarLegendaNormal();
+    }, 300);
+  } catch {}
+  const pos = lembrar(`pos:${x.id}`, 0);
+  video.addEventListener('loadedmetadata', () => { if (pos > 5 && pos < video.duration - 30) video.currentTime = pos; }, { once: true });
+  video.play().catch(() => {});
+  if (/\.(mkv|avi)$/i.test(x.ext ? `.${x.ext}` : '')) status.textContent += ' (se não tocar no navegador, abra pelo VLC ou app de TV)';
+}
+
+// "continuar de onde parou" dos filmes e episódios
+setInterval(() => {
+  if (atual?.tipo === 'vod' && !video.paused && video.duration) {
+    guardar(`pos:${atual.id}`, video.currentTime > video.duration - 30 ? null : video.currentTime);
+    if (video.currentTime > video.duration * 0.9) guardar(`visto:${atual.id}`, true);
+  }
+}, 5000);
+
+// ---------- modo estudo ----------
+// Lê as falas das faixas de legenda (em modo "hidden", sem o player desenhar) e
+// mostra a fala japonesa com furigana e palavras clicáveis, mais uma 2ª legenda.
+
+const estudo = {
+  ativo: lembrar('estudo', false), jp: null, seg: null, cue: null, pausadaEm: null,
+  tokens: null, analises: new Map(), semAnalise: false,
+};
+$('#est-pausar').checked = lembrar('estudoPausar', false);
+$('#est-furigana').checked = lembrar('estudoFurigana', true);
+
+const linguaDe = t => idiomaPref(t.language);
+const limparTexto = s => (s || '').replace(/<[^>]+>/g, '').replace(/（[ぁ-ゖー]+）/g, '').replace(/\s*\n\s*/g, ' ').trim();
+
+function zerarEstudo() {
+  Object.assign(estudo, { jp: null, seg: null, cue: null, pausadaEm: null, tokens: null });
+  $('#linha-jp').replaceChildren();
+  $('#linha-2').textContent = '';
+  $('#palavra').hidden = true;
+}
+
+function aplicarEstudo() {
+  $('#btn-estudo').classList.toggle('ligado', estudo.ativo);
+  $('#painel-estudo').hidden = !estudo.ativo;
+  $('#legenda-estudo').hidden = !estudo.ativo;
+  if (!estudo.ativo) { aplicarLegendaNormal(); return; }
+  const faixas = [...video.textTracks];
+  if (hls) {
+    // ao vivo o hls.js carrega uma faixa por vez: a japonesa
+    const idx = hls.subtitleTracks.findIndex(t => idiomaPref(t.lang) === 'ja');
+    const idxF = hls.subtitleTracks.findIndex(t => idiomaPref(t.lang) === 'jf');
+    const escolhido = idx >= 0 ? idx : idxF;
+    hls.subtitleDisplay = false;
+    if (escolhido >= 0) hls.subtitleTrack = escolhido;
+    const nome = escolhido >= 0 ? hls.subtitleTracks[escolhido].name : null;
+    estudo.jp = faixas.find(t => t.label === nome) || null;
+    estudo.seg = null;
+    $('#est-segunda').replaceChildren(new Option('só em filmes e séries', ''));
+  } else {
+    estudo.jp = faixas.find(t => linguaDe(t) === 'ja') || faixas.find(t => linguaDe(t) === 'jf') || null;
+    const outras = faixas.filter(t => t !== estudo.jp && linguaDe(t) !== 'jf');
+    const sel = $('#est-segunda');
+    sel.replaceChildren(new Option('nenhuma', ''), ...outras.map(t => new Option(t.label, linguaDe(t))));
+    const pref = lembrar('estudoSegunda', 'pt');
+    estudo.seg = outras.find(t => linguaDe(t) === pref) || null;
+    sel.value = estudo.seg ? linguaDe(estudo.seg) : '';
+    faixas.forEach(t => { t.mode = t === estudo.jp || t === estudo.seg ? 'hidden' : 'disabled'; });
+  }
+  if (atual && !estudo.jp) {
+    $('#estudo-msg').textContent = 'Este vídeo não tem legenda japonesa. Ligue a legenda automática no painel (Ajustes → transcricao).';
+  }
+}
+
+$('#btn-estudo').onclick = () => {
+  estudo.ativo = !estudo.ativo;
+  guardar('estudo', estudo.ativo);
+  aplicarEstudo();
+};
+$('#est-pausar').onchange = e => guardar('estudoPausar', e.target.checked);
+$('#est-furigana').onchange = e => { guardar('estudoFurigana', e.target.checked); desenharFala(); };
+$('#est-segunda').onchange = e => { guardar('estudoSegunda', e.target.value); aplicarEstudo(); };
+$('#est-velocidade').onchange = e => { video.playbackRate = Number(e.target.value); };
+$('#est-tela').onclick = () => (document.fullscreenElement ? document.exitFullscreen() : $('#palco').requestFullscreen?.());
+
+function falaAtiva(faixa) {
+  const ativos = faixa?.activeCues;
+  return ativos && ativos.length ? ativos[ativos.length - 1] : null;
+}
+
+// a 2ª legenda que mais se sobrepõe à fala japonesa (fica fixa enquanto a japonesa está na tela)
+function falaPar(faixa, cue) {
+  if (!faixa?.cues || !cue) return null;
+  let melhor = null, maior = 0;
+  for (const c of faixa.cues) {
+    if (c.startTime > cue.endTime) break;
+    const s = Math.min(c.endTime, cue.endTime) - Math.max(c.startTime, cue.startTime);
+    if (s > maior) { maior = s; melhor = c; }
+  }
+  return melhor;
+}
+
+setInterval(() => {
+  if (!estudo.ativo) return;
+  if (!estudo.jp) { if ([...video.textTracks].length) aplicarEstudo(); return; }
+  const cue = falaAtiva(estudo.jp);
+  if (cue && cue !== estudo.cue) {
+    estudo.cue = cue;
+    estudo.tokens = null;
+    $('#linha-2').textContent = limparTexto(falaPar(estudo.seg, cue)?.text);
+    desenharFala();
+    analisarFala(cue);
+  }
+  const c = estudo.cue;
+  if ($('#est-pausar').checked && c && !video.paused && video.currentTime >= c.endTime - 0.12 && estudo.pausadaEm !== c) {
+    estudo.pausadaEm = c;
+    video.pause();
+  }
+}, 100);
+
+async function analisarFala(cue) {
+  const texto = limparTexto(cue.text);
+  if (!texto || estudo.semAnalise) return;
+  try {
+    if (!estudo.analises.has(texto)) estudo.analises.set(texto, (await api('/api/estudo/analisar', 'POST', { texto })).tokens);
+    if (estudo.cue === cue) { estudo.tokens = estudo.analises.get(texto); desenharFala(); }
+  } catch (e) {
+    if (e.message === 'senha') return;
+    estudo.semAnalise = true;
+    $('#estudo-msg').textContent = `Palavras clicáveis indisponíveis: ${e.message}`;
+  }
+}
+
+function rubyEl(partes, comLeitura) {
+  const frag = document.createDocumentFragment();
+  for (const [txt, rt] of partes) {
+    if (rt && comLeitura) {
+      const r = document.createElement('ruby');
+      r.append(txt, Object.assign(document.createElement('rt'), { textContent: rt }));
+      frag.append(r);
+    } else {
+      frag.append(txt);
+    }
+  }
+  return frag;
+}
+
+function desenharFala() {
+  const linha = $('#linha-jp');
+  linha.replaceChildren();
+  if (!estudo.cue) return;
+  if (!estudo.tokens) { linha.textContent = limparTexto(estudo.cue.text); return; }
+  const furigana = $('#est-furigana').checked;
+  for (const t of estudo.tokens) {
+    if (t.classe === 'pontuação' || t.classe === 'símbolo' || t.classe === 'espaço') {
+      linha.append(t.s);
+      continue;
+    }
+    const span = document.createElement('span');
+    span.className = 'token';
+    span.append(rubyEl(t.ruby, furigana));
+    span.onclick = () => abrirPalavra(t, span);
+    linha.append(span);
+    if (t.espaco) linha.append(' ');
+  }
+}
+
+function abrirPalavra(t, span) {
+  video.pause();
+  document.querySelectorAll('.token.escolhido').forEach(x => x.classList.remove('escolhido'));
+  span.classList.add('escolhido');
+  const p = $('#palavra');
+  p.replaceChildren();
+  const grande = Object.assign(document.createElement('div'), { className: 'grande', lang: 'ja' });
+  grande.append(rubyEl(t.ruby, true));
+  p.append(grande);
+  const linha = txt => p.append(Object.assign(document.createElement('div'), { className: 'linha', textContent: txt }));
+  if (t.base && t.base !== t.s) linha(`Forma de dicionário: ${t.base}${t.baseLeitura ? ` (${t.baseLeitura})` : ''}`);
+  else if (t.leitura && t.leitura !== t.s) linha(`Leitura: ${t.leitura}`);
+  if (t.classe) linha(`Classe: ${t.classe}`);
+  if (t.glosas?.length) {
+    const ol = document.createElement('ol');
+    t.glosas.forEach(g => ol.append(Object.assign(document.createElement('li'), { textContent: g })));
+    p.append(ol);
+  } else {
+    linha('Sem significado no dicionário do servidor — use os links abaixo.');
+  }
+  const frase = limparTexto(estudo.cue?.text);
+  const botoes = Object.assign(document.createElement('div'), { className: 'botoes' });
+  const link = (txt, url) => Object.assign(document.createElement('a'), { textContent: txt, href: url, target: '_blank', rel: 'noopener' });
+  botoes.append(
+    link('Jisho', `https://jisho.org/search/${encodeURIComponent(t.base || t.s)}`),
+    link('Traduzir palavra', `https://translate.google.com/?sl=ja&tl=pt&op=translate&text=${encodeURIComponent(t.base || t.s)}`),
+    link('Traduzir frase', `https://translate.google.com/?sl=ja&tl=pt&op=translate&text=${encodeURIComponent(frase)}`));
+  const salvar = Object.assign(document.createElement('button'), { className: 'acao', textContent: '⭐ Salvar palavra' });
+  salvar.onclick = () => salvarCartao(t.s);
+  const fechar = Object.assign(document.createElement('button'), { className: 'acao', textContent: 'Fechar' });
+  fechar.onclick = () => { p.hidden = true; span.classList.remove('escolhido'); };
+  botoes.append(salvar, fechar);
+  p.append(botoes);
+  p.hidden = false;
+}
+
+function irPara(cue) {
+  if (!cue) return;
+  estudo.pausadaEm = null;
+  video.currentTime = cue.startTime + 0.01;
+  video.play().catch(() => {});
+}
+function vizinha(passo) {
+  const lista = [...(estudo.jp?.cues || [])];
+  if (!lista.length) return null;
+  const t = video.currentTime;
+  let i = estudo.cue ? lista.indexOf(estudo.cue) : -1;
+  if (i < 0) i = lista.findIndex(c => c.startTime > t) - 1;
+  if (passo < 0 && estudo.cue && t - estudo.cue.startTime > 1.5) return estudo.cue; // volta ao começo da fala atual
+  return lista[Math.max(0, Math.min(lista.length - 1, i + passo))];
+}
+$('#est-anterior').onclick = () => irPara(vizinha(-1));
+$('#est-proxima').onclick = () => irPara(vizinha(1));
+$('#est-repetir').onclick = () => irPara(estudo.cue);
+
+document.addEventListener('keydown', e => {
+  if (!estudo.ativo || ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'a') irPara(vizinha(-1));
+  else if (k === 's') irPara(estudo.cue);
+  else if (k === 'd') irPara(vizinha(1));
+});
+
+async function salvarCartao(palavra) {
+  const frase = limparTexto(estudo.cue?.text);
+  if (!frase) return;
+  try {
+    await api('/api/estudo/cartoes', 'POST', {
+      frase, palavra, traducao: $('#linha-2').textContent, fonte: atual?.titulo || '', tempo: estudo.cue.startTime,
+    });
+    $('#estudo-msg').textContent = palavra ? `⭐ "${palavra}" salva nos cartões.` : '⭐ Frase salva nos cartões.';
+  } catch (e) {
+    $('#estudo-msg').textContent = `Não consegui salvar: ${e.message}`;
+  }
+}
+$('#est-salvar').onclick = () => salvarCartao();
+
+async function abrirCartoes() {
+  const j = $('#cartoes');
+  j.replaceChildren(Object.assign(document.createElement('h2'), { textContent: 'Carregando…' }));
+  j.hidden = false;
+  let lista = [];
+  try { lista = await api('/api/estudo/cartoes'); } catch {}
+  j.replaceChildren();
+  const topo = Object.assign(document.createElement('div'), { className: 'botoes' });
+  const exportar = Object.assign(document.createElement('a'), { textContent: `⬇ Exportar para o Anki (${lista.length})`, href: comToken('/api/estudo/anki.txt'), download: 'iptv-japones-anki.txt' });
+  const fechar = Object.assign(document.createElement('button'), { className: 'acao', textContent: 'Fechar' });
+  fechar.onclick = () => { j.hidden = true; };
+  topo.append(exportar, fechar);
+  j.append(Object.assign(document.createElement('h2'), { textContent: '📚 Meus cartões' }), topo,
+    Object.assign(document.createElement('p'), { className: 'marca', textContent: 'No Anki: Arquivo → Importar → escolha o arquivo baixado.' }));
+  for (const c of lista.slice().reverse()) {
+    const d = Object.assign(document.createElement('div'), { className: 'cartao' });
+    const corpo = document.createElement('div');
+    const jp = Object.assign(document.createElement('div'), { className: 'jp', lang: 'ja' });
+    jp.innerHTML = c.fraseRuby; // HTML montado e escapado pelo servidor
+    corpo.append(jp);
+    if (c.palavra) corpo.append(Object.assign(document.createElement('small'), { textContent: `${c.palavra} → ${c.base} (${c.baseLeitura || c.leitura}) · ${c.classe}${c.glosas?.length ? ' · ' + c.glosas.join(' / ') : ''}` }));
+    if (c.traducao) corpo.append(Object.assign(document.createElement('small'), { textContent: c.traducao }));
+    if (c.fonte) corpo.append(Object.assign(document.createElement('small'), { textContent: c.fonte }));
+    const apagar = Object.assign(document.createElement('button'), { className: 'acao', textContent: '🗑' });
+    apagar.onclick = async () => { await api(`/api/estudo/cartoes/${c.id}`, 'DELETE').catch(() => {}); abrirCartoes(); };
+    d.append(corpo, apagar);
+    j.append(d);
+  }
+}
+$('#est-cartoes').onclick = abrirCartoes;
+
+// ---------- listas ----------
+
+function botao(conteudo, ao, ativo = false) {
+  const b = document.createElement('button');
+  b.append(...conteudo);
+  b.onclick = ao;
+  if (ativo) b.classList.add('ativo');
+  return b;
+}
+const texto = (tag, t, cls) => Object.assign(document.createElement(tag), { textContent: t, className: cls || '' });
+function imagem(src, cls = '') {
+  const img = Object.assign(document.createElement('img'), { src: src || '', loading: 'lazy', alt: '', className: cls });
+  img.onerror = () => { img.style.visibility = 'hidden'; };
+  return img;
+}
+
+function desenharTv(filtro) {
+  const lista = $('#lista');
+  const grupos = new Map();
+  for (const c of canais) {
+    if (filtro && !semAcento(`${c.numero} ${c.nome} ${c.grupo}`).includes(semAcento(filtro))) continue;
+    if (!grupos.has(c.grupo)) grupos.set(c.grupo, []);
+    grupos.get(c.grupo).push(c);
+  }
+  for (const [g, itens] of grupos) {
+    lista.append(texto('h2', `${g} (${itens.length})`));
+    for (const c of itens) {
+      const b = botao([texto('span', c.numero, 'num'), imagem(c.logo), c.nome, texto('span', c.noAr ? (c.ligado ? '● ao vivo' : '') : 'fora do ar', 'marca')],
+        () => { marcar(b); tocarAoVivo(c); }, atual?.id === c.id);
+      if (!c.noAr) b.classList.add('fora');
+      b.dataset.id = c.id;
+      lista.append(b);
+    }
+  }
+}
+
+function itemCapa(x, linha2) {
+  const d = document.createElement('div');
+  d.className = 'capa';
+  const t = document.createElement('div');
+  t.append(x.titulo + (x.ano ? ` (${x.ano})` : ''), texto('small', linha2 || ''));
+  d.append(imagem(x.capa), t);
+  return d;
+}
+
+function desenharFilmes(filtro) {
+  const lista = $('#lista');
+  const porCat = new Map();
+  for (const f of bib.filmes) {
+    if (filtro && !semAcento(`${f.titulo} ${f.categoria}`).includes(semAcento(filtro))) continue;
+    if (!porCat.has(f.categoria)) porCat.set(f.categoria, []);
+    porCat.get(f.categoria).push(f);
+  }
+  if (!bib.filmes.length) lista.append(texto('p', 'Coloque filmes em biblioteca/filmes/ (veja o README).', 'marca'));
+  for (const [cat, itens] of porCat) {
+    lista.append(texto('h2', cat));
+    for (const f of itens) {
+      const pos = lembrar(`pos:${f.id}`, 0);
+      const extra = lembrar(`visto:${f.id}`, false) ? '✓ visto' : pos ? `continuar de ${Math.floor(pos / 60)} min` : (f.nota ? `★ ${f.nota.toFixed(1)}` : '');
+      lista.append(botao([itemCapa(f, extra)], e => { marcar(e.currentTarget); tocarArquivo(f, f.titulo); }, atual?.id === f.id));
+    }
+  }
+}
+
+function desenharSeries(filtro) {
+  const lista = $('#lista');
+  if (serieAberta) {
+    const s = bib.series.find(x => x.id === serieAberta);
+    lista.append(botao(['← todas as séries'], () => { serieAberta = null; desenhar(); }));
+    lista.append(itemCapa(s, s.sinopse ? s.sinopse.slice(0, 140) + '…' : ''));
+    let temp = null;
+    for (const e of s.episodios) {
+      if (filtro && !semAcento(e.titulo).includes(semAcento(filtro))) continue;
+      if (e.temporada !== temp) { temp = e.temporada; lista.append(texto('h2', `Temporada ${temp}`)); }
+      const pos = lembrar(`pos:${e.id}`, 0);
+      const marca = lembrar(`visto:${e.id}`, false) ? '✓' : pos ? `${Math.floor(pos / 60)} min` : '';
+      lista.append(botao([texto('span', e.episodio, 'num'), e.titulo, texto('span', marca, 'marca')],
+        ev => { marcar(ev.currentTarget); tocarArquivo(e, `${s.titulo} · T${e.temporada}E${e.episodio}`); }, atual?.id === e.id));
+    }
+    return;
+  }
+  if (!bib.series.length) lista.append(texto('p', 'Coloque séries em biblioteca/series/<Nome da série>/ (veja o README).', 'marca'));
+  for (const s of bib.series) {
+    if (filtro && !semAcento(s.titulo).includes(semAcento(filtro))) continue;
+    const vistos = s.episodios.filter(e => lembrar(`visto:${e.id}`, false)).length;
+    lista.append(botao([itemCapa(s, `${s.episodios.length} episódios${vistos ? ` · ${vistos} vistos` : ''}`)],
+      () => { serieAberta = s.id; desenhar(); }));
+  }
+}
+
+function marcar(b) {
+  document.querySelectorAll('#lista button.ativo').forEach(x => x.classList.remove('ativo'));
+  b.classList.add('ativo');
+}
+
+function desenhar() {
+  const lista = $('#lista');
+  const rolagem = lista.scrollTop;
+  lista.replaceChildren();
+  ({ tv: desenharTv, filmes: desenharFilmes, series: desenharSeries })[aba]($('#busca').value);
+  lista.scrollTop = rolagem;
+}
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  aba = b.dataset.aba;
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('ativo', x === b));
+  $('#busca').value = '';
+  $('#lista').scrollTop = 0;
+  desenhar();
+});
+$('#busca').oninput = desenhar;
+
+// ↑/↓ trocam de canal, como no controle remoto
+document.addEventListener('keydown', e => {
+  if (aba !== 'tv' || atual?.tipo !== 'tv' || e.target.tagName === 'INPUT' || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+  e.preventDefault();
+  const visiveis = canais.filter(c => c.noAr);
+  const i = visiveis.findIndex(c => c.id === atual.id);
+  const prox = visiveis[(i + (e.key === 'ArrowDown' ? 1 : -1) + visiveis.length) % visiveis.length];
+  if (prox) { tocarAoVivo(prox); desenhar(); }
+});
+
+async function carregar() {
+  const dados = await api('/api/canais');
+  canais = dados.canais;
+  $('#link-admin').hidden = !dados.admin;
+  $('#info').textContent = `${canais.length} canais` + (dados.atualizadoEm
+    ? ` · lista pública de ${new Date(dados.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}` : '');
+  $('#link-m3u').textContent = comToken(`${location.origin}/playlist.m3u`);
+  bib = await api('/api/biblioteca').catch(() => bib);
+  desenhar();
+}
+
+aplicarEstudo();
+carregar().catch(e => { if (e.message !== 'senha') status.textContent = 'Não consegui falar com o servidor.'; });
+setInterval(() => api('/api/canais').then(d => { canais = d.canais; if (aba === 'tv') desenhar(); }).catch(() => {}), 60_000);
+</script>
+</body>
+</html>

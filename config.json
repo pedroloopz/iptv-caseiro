@@ -1,0 +1,12 @@
+{
+  "aceleracao": "cpu",
+  "qualidades": ["720p"],
+  "idiomaLegendaPadrao": "pt",
+  "verificarACadaMinutos": 15,
+  "linksDiretos": false,
+  "biblioteca": "biblioteca",
+  "tmdbApiKey": "",
+  "https": { "cert": "", "key": "" },
+  "epgIptvOrg": { "ativo": false, "dias": 2, "conexoes": 5 },
+  "transcricao": { "ativo": false, "motor": "faster-whisper", "modelo": "small", "dispositivo": "auto", "python": "python3", "furigana": true }
+}

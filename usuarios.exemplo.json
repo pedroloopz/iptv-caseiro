@@ -1,0 +1,5 @@
+[
+  { "usuario": "eu", "senha": "troque-esta-senha-1", "admin": true },
+  { "usuario": "tv-sala", "senha": "troque-esta-senha-2" },
+  { "usuario": "celular", "senha": "troque-esta-senha-3", "ativo": true }
+]

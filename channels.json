@@ -1,0 +1,34 @@
+[
+  {
+    "id": "teste",
+    "nome": "Canal Teste",
+    "grupo": "Exemplos",
+    "tipo": "teste",
+    "programacao": [
+      { "inicio": "00:00", "fim": "12:00", "titulo": "Barras coloridas — manhã" },
+      { "inicio": "12:00", "fim": "24:00", "titulo": "Barras coloridas — tarde e noite" }
+    ]
+  },
+  {
+    "id": "filmes",
+    "nome": "Meus Filmes",
+    "grupo": "Pessoal",
+    "tipo": "pasta",
+    "origem": "midia/filmes"
+  },
+  {
+    "id": "minha-serie",
+    "nome": "Minha Série",
+    "grupo": "Japonês",
+    "tipo": "pasta",
+    "origem": "midia/minha-serie",
+    "idiomaLegenda": "ja"
+  },
+  {
+    "id": "camera",
+    "nome": "Câmera / Live externa",
+    "grupo": "Pessoal",
+    "tipo": "url",
+    "origem": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+  }
+]

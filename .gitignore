@@ -1,0 +1,11 @@
+hls/
+dados/
+dados-docker/
+midia/*
+!midia/.gitkeep
+biblioteca/*
+!biblioteca/.gitkeep
+usuarios.json
+preferencias.json
+*.tmp
+__pycache__/
