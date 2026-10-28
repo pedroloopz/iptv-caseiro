@@ -35,6 +35,17 @@ if [ -z "${IPTV_SEM_APT:-}" ]; then
   fi
 fi
 
+# máquinas com pouca memória (ex.: Oracle E2.1.Micro, 1 GB): 2 GB de swap evitam travar por falta de RAM
+MEM_KB="$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+if [ "${MEM_KB:-0}" -lt 2000000 ] && [ -z "${IPTV_SEM_SWAP:-}" ] && ! swapon --show 2>/dev/null | grep -q .; then
+  passo "Pouca memória: criando 2 GB de swap"
+  $SUDO fallocate -l 2G /swapfile 2>/dev/null || $SUDO dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
+  $SUDO chmod 600 /swapfile
+  $SUDO mkswap /swapfile >/dev/null
+  $SUDO swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' | $SUDO tee -a /etc/fstab >/dev/null
+fi
+
 passo "Baixando o IPTV ($RAMO)"
 if [ -d "$CODIGO/.git" ]; then
   git -C "$CODIGO" fetch -q --depth 1 origin "$RAMO"
