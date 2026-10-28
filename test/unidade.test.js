@@ -306,3 +306,19 @@ test('canais: filtro extra esconde os fora do ar sem tirar do painel', () => {
   assert.ok(canais.todos().some(c => c.id === 'um'));
   canais.definirFiltro(() => true);
 });
+
+test('grupo pelo país do canal', () => {
+  const { paisDe } = require('../lib/atualizar');
+  assert.equal(paisDe('Globo.br@SD'), 'Brasil');
+  assert.equal(paisDe('NHKWorldPremium.jp'), 'Japão');
+  assert.equal(paisDe('Erste.de@HD'), 'Alemanha');
+  assert.equal(paisDe('Canal.zz'), 'ZZ');
+  assert.equal(paisDe(''), null);
+  assert.equal(paisDe('SemPais'), null);
+  const lista = agrupar(lerM3U([
+    '#EXTINF:-1 tvg-id="A.br@SD" group-title="News",A', 'http://a/1.m3u8',
+    '#EXTINF:-1 tvg-id="B.jp" group-title="General",B', 'http://b/1.m3u8',
+    '#EXTINF:-1 group-title="Undefined",C', 'http://c/1.m3u8',
+  ].join('\n')), true);
+  assert.deepEqual(lista.map(c => c.grupo).sort(), ['Brasil', 'Japão', 'Outros países']);
+});

@@ -4,19 +4,44 @@
     "https://iptv-org.github.io/iptv/countries/br.m3u",
     "https://iptv-org.github.io/iptv/languages/por.m3u",
     "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_brazil.m3u8",
-    { "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_portugal.m3u8", "grupo": "Portugal" },
-    { "url": "https://iptv-org.github.io/iptv/languages/jpn.m3u", "grupo": "Japão" },
-    { "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_japan.m3u8", "grupo": "Japão" },
-    { "url": "https://iptv-org.github.io/iptv/countries/de.m3u", "grupo": "Alemanha" },
-    { "url": "https://iptv-org.github.io/iptv/languages/deu.m3u", "grupo": "Alemanha" },
-    { "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_germany.m3u8", "grupo": "Alemanha" }
+    "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_portugal.m3u8",
+    "https://iptv-org.github.io/iptv/languages/jpn.m3u",
+    "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_japan.m3u8",
+    "https://iptv-org.github.io/iptv/countries/de.m3u",
+    "https://iptv-org.github.io/iptv/languages/deu.m3u",
+    "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_germany.m3u8",
+    {
+      "url": "https://iptv-org.github.io/iptv/languages/eng.m3u",
+      "nomes": "UFC|Fight"
+    },
+    {
+      "url": "https://iptv-org.github.io/iptv/languages/eng.m3u",
+      "categorias": [
+        "Movies",
+        "Series",
+        "Animation",
+        "Kids",
+        "Documentary",
+        "Classic"
+      ]
+    }
   ],
-  "excluirGrupos": [],
+  "excluirGrupos": [
+    "Religious",
+    "Shop",
+    "Legislative"
+  ],
   "excluirNaoVinteQuatroHoras": false,
   "excluirIpSolto": false,
-  "excluirHosts": ["mov3.co", "freem3u.xyz", "thinkkast.dpdns.org", "satlabscloud.com.br"],
+  "excluirHosts": [
+    "mov3.co",
+    "freem3u.xyz",
+    "thinkkast.dpdns.org",
+    "satlabscloud.com.br"
+  ],
   "testarStreams": true,
   "timeoutTesteMs": 8000,
   "simultaneos": 20,
-  "epgExterno": []
+  "epgExterno": [],
+  "grupoPorPais": true
 }

@@ -257,7 +257,8 @@ link em uso cai, passa para o reserva sozinho, inclusive no meio de uma requisi�
 |---|---|---|
 | `listas` | iptv-org e Free-TV: Brasil, Portugal, Japão e Alemanha | URLs `.m3u`, ou `{ "url": "…", "grupo": "Alemanha", "categorias": ["Movies", "Series"] }`: `grupo` junta os canais da lista num grupo; `categorias` mantém só essas categorias do iptv-org; `nomes` mantém só os canais cujo nome bate (ex.: `"UFC|Fight"`) |
 | `atualizarACadaHoras` | `6` | intervalo entre downloads |
-| `excluirGrupos` | `[]` | ex.: `["Shop", "Religious"]` |
+| `excluirGrupos` | `["Religious", "Shop", "Legislative"]` | categorias do iptv-org a tirar (religiosos, compras, legislativos) |
+| `grupoPorPais` | `true` | agrupa os canais públicos por país (Brasil, Japão, Alemanha…) em vez de por categoria |
 | `excluirNaoVinteQuatroHoras` | `false` | remove canais `[Not 24/7]` |
 | `excluirIpSolto` | `false` | `true` ignora links em IP cru (quase sempre retransmissão não autorizada) |
 | `excluirHosts` | 4 domínios | domínios a ignorar |
