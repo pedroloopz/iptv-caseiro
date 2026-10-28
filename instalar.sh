@@ -19,6 +19,11 @@ TRANSCRICAO="${IPTV_TRANSCRICAO:-0}"
 
 passo() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
+if [ -n "$SUDO" ] && ! command -v sudo >/dev/null 2>&1; then
+  echo "Este comando precisa rodar DENTRO do servidor, não no Cloud Shell."
+  echo "Entre primeiro com:  ssh ubuntu@IP_DO_SERVIDOR   e cole o comando de novo lá."
+  exit 1
+fi
 USUARIO="$(id -un)"
 
 if [ -z "${IPTV_SEM_APT:-}" ]; then
