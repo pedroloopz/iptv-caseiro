@@ -262,6 +262,7 @@ link em uso cai, passa para o reserva sozinho, inclusive no meio de uma requisi�
 | `excluirIpSolto` | `false` | `true` ignora links em IP cru (quase sempre retransmissão não autorizada) |
 | `excluirHosts` | 4 domínios | domínios a ignorar |
 | `testarStreams`, `timeoutTesteMs`, `simultaneos` | `true`, `8000`, `20` | teste dos links |
+| `testeCompleto` | `true` | testa até o vídeo (playlist → qualidade → começo do primeiro pedaço): tira canais bloqueados por país, com proteção contra cópia (DRM) ou que respondem com página de erro |
 | `epgExterno` | `[]` | guias XMLTV (`.xml` ou `.xml.gz`) |
 
 - Mais listas = mais links reserva. O mesmo canal em listas diferentes (mesmo `tvg-id`), ou em
@@ -275,6 +276,8 @@ Na playlist, os canais públicos apontam para `/canal/<id>.m3u8` no seu servidor
 para o link no ar (a imagem não passa pela sua máquina). Fontes que exigem User-Agent/Referer,
 e o player web, passam pelo proxy do servidor. `"linksDiretos": true` no `config.json` põe o
 link original na playlist, mas aí não há troca automática.
+
+Canais públicos que falham no teste somem dos apps, da playlist e do player web (`"esconderForaDoAr": true` no `config.json`); o painel continua mostrando todos, e eles voltam sozinhos quando passam no teste de novo.
 
 `"canaisPeloServidor"` decide quando a imagem dos canais públicos passa pelo servidor: `"geo"` (padrão)
 só os marcados como bloqueados por país, `"todos"` todos (útil com o servidor em outro país, como

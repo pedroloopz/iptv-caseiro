@@ -68,6 +68,8 @@ async function atualizarGrades() {
   }
 }
 
+// canais públicos que falharam no teste somem dos apps e da playlist (o painel mostra todos)
+canais.definirFiltro(c => c.local || !cfg.esconderForaDoAr || externos.est(c).noAr !== false);
 recarregarTudo();
 if (auth.aberto()) console.warn('[auth] nenhum usuário em usuarios.json: acesso LIVRE, inclusive ao painel. Use só na rede de casa.');
 config.observar(nome => recarregarTudo(nome));
@@ -81,6 +83,7 @@ async function atualizarSePreciso(forcar = false) {
   if (!forcar && !atualizador.precisaAtualizar()) return;
   try {
     await atualizador.atualizar();
+    externos.estado.clear(); // a lista nova acabou de ser testada: vale o resultado dela
     recarregarTudo('lista pública');
     ultimaVerificacao = Date.now(); // acabou de testar tudo
   } catch (e) {

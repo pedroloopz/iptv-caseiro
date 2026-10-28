@@ -258,3 +258,51 @@ test('playlist de canal público: endereços relativos viram completos', () => {
   assert.match(pl, /\nhttps:\/\/fonte\.com\/abs\/seg2\.ts\n/);
   assert.match(pl, /\nhttps:\/\/cdn\.x\/seg3\.ts\n/);
 });
+
+test('teste completo do link: vai até o vídeo e recusa bloqueio, DRM e página de erro', async () => {
+  const { estaNoAr, pareceVideo } = require('../lib/atualizar');
+  const http = require('http');
+  const TS = Buffer.alloc(188 * 4, 0); TS[0] = 0x47;
+  const rotas = {
+    '/ok.m3u8': ['#EXTM3U\n#EXTINF:4,\nseg.ts\n'],
+    '/master.m3u8': ['#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nvar/ok.m3u8\n'],
+    '/var/ok.m3u8': ['#EXTM3U\n#EXTINF:4,\n../seg.ts\n'],
+    '/geo.m3u8': ['#EXTM3U\n#EXTINF:4,\nproibido.ts\n'],
+    '/drm.m3u8': ['#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://x",KEYFORMAT="com.apple.streamingkeydelivery"\n#EXTINF:4,\nseg.ts\n'],
+    '/html.m3u8': ['#EXTM3U\n#EXTINF:4,\npagina.ts\n'],
+    '/aes.m3u8': ['#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="k.key"\n#EXTINF:4,\ncripto.ts\n'],
+    '/naoplaylist.m3u8': ['<html>erro</html>'],
+  };
+  const srv = http.createServer((req, res) => {
+    const p = req.url.split('?')[0];
+    if (rotas[p]) { res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl' }); return res.end(rotas[p][0]); }
+    if (p === '/seg.ts') { res.writeHead(206, { 'Content-Type': 'video/mp2t' }); return res.end(TS); }
+    if (p === '/cripto.ts') { res.writeHead(200, { 'Content-Type': 'video/mp2t' }); return res.end(Buffer.from([0x9a, 0x13, 0x77])); }
+    if (p === '/pagina.ts') { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end('<html>bloqueado</html>'); }
+    res.writeHead(403); res.end();
+  });
+  await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const u = p => ({ url: `http://127.0.0.1:${srv.address().port}${p}` });
+  try {
+    assert.equal(await estaNoAr(u('/ok.m3u8')), true);
+    assert.equal(await estaNoAr(u('/master.m3u8')), true);    // desce da playlist principal para a qualidade
+    assert.equal(await estaNoAr(u('/geo.m3u8')), false);      // vídeo responde 403 (bloqueio por país)
+    assert.equal(await estaNoAr(u('/geo.m3u8'), 8000, false), true); // o teste antigo deixava passar
+    assert.equal(await estaNoAr(u('/drm.m3u8')), false);      // proteção contra cópia
+    assert.equal(await estaNoAr(u('/html.m3u8')), false);     // "vídeo" que é página de erro
+    assert.equal(await estaNoAr(u('/aes.m3u8')), true);       // AES-128 comum toca
+    assert.equal(await estaNoAr(u('/naoplaylist.m3u8')), false);
+    assert.equal(await estaNoAr(u('/morto.m3u8')), false);
+  } finally {
+    srv.close();
+  }
+  assert.equal(pareceVideo(Buffer.from('....ftypisom'), 'video/mp4'), true);
+  assert.equal(pareceVideo(Buffer.from([0x47, 0, 0]), 'text/html'), false);
+});
+
+test('canais: filtro extra esconde os fora do ar sem tirar do painel', () => {
+  canais.definirFiltro(c => c.id !== 'um');
+  assert.deepEqual(canais.visiveis().map(c => c.id), ['tres']);
+  assert.ok(canais.todos().some(c => c.id === 'um'));
+  canais.definirFiltro(() => true);
+});
