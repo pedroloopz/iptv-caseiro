@@ -327,7 +327,7 @@ Descubra o IP do computador: `ip a` (Linux), `ipconfig` (Windows) ou `ipconfig g
 1. Adicionar playlist → **Xtream Codes**
 2. Servidor: `http://SEU_IP:8080`
 3. Usuário e senha: os de `usuarios.json`
-4. No TiviMate, em formato de stream, escolha **HLS (m3u8)**
+4. Formato de stream: tanto **HLS (m3u8)** quanto **MPEG-TS (.ts)** funcionam; se um canal falhar, troque para o outro
 
 **Apps com M3U:** VLC (**Mídia → Abrir fluxo de rede**), Kodi (PVR IPTV Simple Client)
 - Playlist: `http://SEU_IP:8080/playlist.m3u?token=SUA_SENHA`

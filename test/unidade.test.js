@@ -248,3 +248,13 @@ test('modo estudo: lê o .zip do dicionário e monta cartões para o Anki', () =
   const html = estudo.rubyHtml([{ ruby: [['食', 'た'], ['べ', null]] }, { ruby: [['<b>', null]] }]);
   assert.equal(html, '<ruby>食<rt>た</rt></ruby>べ&lt;b&gt;');
 });
+
+test('playlist de canal público: endereços relativos viram completos', () => {
+  const { absolutizarM3U8 } = require('../lib/externos');
+  const pl = absolutizarM3U8('#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="chave.key"\n#EXTINF:4,\nseg1.ts\n/abs/seg2.ts\nhttps://cdn.x/seg3.ts\n',
+    'https://fonte.com/canal/index.m3u8?t=1');
+  assert.match(pl, /URI="https:\/\/fonte\.com\/canal\/chave\.key"/);
+  assert.match(pl, /\nhttps:\/\/fonte\.com\/canal\/seg1\.ts\n/);
+  assert.match(pl, /\nhttps:\/\/fonte\.com\/abs\/seg2\.ts\n/);
+  assert.match(pl, /\nhttps:\/\/cdn\.x\/seg3\.ts\n/);
+});

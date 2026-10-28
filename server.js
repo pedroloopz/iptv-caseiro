@@ -20,6 +20,7 @@ const xtream = require('./lib/xtream');
 const transcricao = require('./lib/transcricao');
 const estudo = require('./lib/estudo');
 const { sondar } = require('./lib/midia');
+const { spawn } = require('child_process');
 
 const PORTA = Number(process.env.PORT) || 8080;
 const INICIO = Date.now();
@@ -208,6 +209,32 @@ const gerarEpg = () => epg.gerar(canais.visiveis(), new Map([...grades].filter((
 
 // ---------- rotas ----------
 
+// Canal ao vivo como MPEG-TS contínuo (formato ".ts" que vários apps Xtream pedem por
+// padrão): o ffmpeg só reempacota o HLS, sem converter — leve até em máquina pequena
+function transmitirTs(res, c, token) {
+  let entrada;
+  const extras = [];
+  if (c.local) {
+    entrada = `http://127.0.0.1:${PORTA}/hls/${c.id}/index.m3u8${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+  } else {
+    const o = externos.origemAtiva(c);
+    entrada = o.url;
+    if (o.userAgent) extras.push('-user_agent', o.userAgent);
+    if (o.referrer) extras.push('-headers', `Referer: ${o.referrer}\r\n`);
+  }
+  const rede = /^https?:/.test(entrada) ? ['-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5'] : [];
+  const p = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', ...rede, ...extras, '-i', entrada,
+    '-c', 'copy', '-f', 'mpegts', 'pipe:1'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  p.stderr.on('data', d => process.stderr.write(`[${c.id} .ts] ${d}`));
+  res.writeHead(200, { 'Content-Type': 'video/mp2t', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+  p.stdout.pipe(res);
+  res.on('close', () => p.kill('SIGKILL'));
+  p.on('exit', code => {
+    if (code && !c.local) externos.falhou(c, `ffmpeg ${code}`);
+    res.end();
+  });
+}
+
 async function rotaHls(req, res, c, arquivo, token) {
   if (!c?.local) return enviar(res, 404, 'canal não encontrado');
   const t = transmissao.obter(c, cfg);
@@ -376,6 +403,7 @@ async function rotear(req, res) {
   if (xt) {
     if (!xt.item) return enviar(res, 404, 'não encontrado');
     if (xt.tipo === 'live') {
+      if (xt.ext === 'ts') return transmitirTs(res, xt.item, token);
       const destino = xt.item.local ? `/hls/${xt.item.id}/index.m3u8` : `/canal/${xt.item.id}.m3u8`;
       res.writeHead(302, { Location: comToken(destino, token) });
       return res.end();

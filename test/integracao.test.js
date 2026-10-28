@@ -142,10 +142,15 @@ test('canal local: qualidades, legendas JP/PT e pedaço de legenda alinhado', as
   assert.match(vtt, /^WEBVTT\nX-TIMESTAMP-MAP=MPEGTS:\d+,LOCAL:/);
 });
 
-test('canal público: pula o link morto e redireciona para o reserva', async () => {
+test('canal público: pula o link morto e entrega a playlist do reserva com endereços completos', async () => {
   const r = await get(tok('/canal/x-publico-br-sd.m3u8'));
-  assert.equal(r.status, 302);
-  assert.equal(r.headers.get('location'), `http://127.0.0.1:${portaFonte}/vivo.m3u8`);
+  assert.equal(r.status, 200); // sem redirecionamento (players de Android recusam http -> https)
+  const pl = await r.text();
+  assert.match(pl, /^#EXTM3U/);
+  const midia = pl.split('\n').filter(l => l && !l.startsWith('#'));
+  assert.ok(midia.length > 0);
+  for (const l of midia) assert.ok(l.startsWith(`http://127.0.0.1:${portaFonte}/`), l);
+  assert.equal((await get(midia[0])).status, 200); // o vídeo vem direto da fonte
   assert.match(log, /trocando para o reserva/);
 });
 
@@ -181,6 +186,14 @@ test('API Xtream: login, canais, filmes, séries e arquivo com Range', async () 
   assert.equal((await parcial.arrayBuffer()).byteLength, 100);
   const vivo = await get(`/live/dono/${ADMIN}/${vivos.find(c => c.name === 'Série').stream_id}.m3u8`);
   assert.equal(vivo.status, 302);
+  // formato .ts (padrão de vários apps): MPEG-TS de verdade, começando no byte de sincronia 0x47
+  const pub = vivos.find(c => c.epg_channel_id === 'x-publico-br-sd');
+  const ts = await get(`/live/dono/${ADMIN}/${pub.stream_id}.ts`);
+  assert.equal(ts.status, 200);
+  assert.equal(ts.headers.get('content-type'), 'video/mp2t');
+  const bytes = new Uint8Array(await ts.arrayBuffer());
+  assert.ok(bytes.length > 1000);
+  assert.equal(bytes[0], 0x47);
 });
 
 test('biblioteca no player web, com legenda do filme', async () => {
