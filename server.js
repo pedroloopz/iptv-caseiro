@@ -370,8 +370,10 @@ async function rotaEstudo(req, res, acao, id, usuario) {
 }
 
 async function rotear(req, res) {
-  const url = new URL(req.url, 'http://x');
-  const rota = url.pathname;
+  const url = new URL(req.url.replace(/^\/{2,}/, '/'), 'http://x');
+  // "http://servidor:8080/" no app vira "//player_api.php": junta as barras repetidas
+  let rota = url.pathname.replace(/\/{2,}/g, '/');
+  if (rota === '/panel_api.php') rota = '/player_api.php'; // nome usado por alguns apps Xtream antigos
   const ip = req.socket.remoteAddress;
 
   // alguns apps Xtream mandam usuário/senha no corpo (POST de formulário), não no endereço

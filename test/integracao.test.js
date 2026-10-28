@@ -170,6 +170,9 @@ test('API Xtream: login, canais, filmes, séries e arquivo com Range', async () 
   const login = await (await get(`/player_api.php?${q}`)).json();
   assert.equal(login.user_info.auth, 1);
   assert.equal((await get('/player_api.php?username=dono&password=errada')).status, 401);
+  // servidor digitado com barra no final ("…:8080/") e o nome antigo panel_api.php
+  assert.equal((await (await get(`//player_api.php?${q}`)).json()).user_info.auth, 1);
+  assert.equal((await (await get(`/panel_api.php?${q}`)).json()).user_info.auth, 1);
   // login enviado por POST de formulário (alguns apps fazem assim)
   const porPost = await get('/player_api.php', { method: 'POST', body: `username=dono&password=${ADMIN}`,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
