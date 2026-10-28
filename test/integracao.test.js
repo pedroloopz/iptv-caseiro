@@ -53,7 +53,8 @@ before(async () => {
         `#EXTINF:-1 tvg-id="Exige.br@SD" group-title="Movies",Exige Referer`, '#EXTVLCOPT:http-referrer=https://exige.com.br/',
         `http://127.0.0.1:${portaFonte}/vivo.m3u8?ref=1`,
         ...(req.url.includes('?2') ? ['#EXTINF:-1 tvg-id="Filmes.us" group-title="Movies;Classic",English Movies', `http://127.0.0.1:${portaFonte}/vivo.m3u8?en=1`,
-          '#EXTINF:-1 tvg-id="Noticias.us" group-title="News",English News', `http://127.0.0.1:${portaFonte}/vivo.m3u8?en=2`] : [])].join('\n'));
+          '#EXTINF:-1 tvg-id="Noticias.us" group-title="News",English News', `http://127.0.0.1:${portaFonte}/vivo.m3u8?en=2`] : []),
+        ...(req.url.includes('&3') ? ['#EXTINF:-1 tvg-id="UFC.us" group-title="Sports",UFC', `http://127.0.0.1:${portaFonte}/vivo.m3u8?ufc=1`] : [])].join('\n'));
     } else if (fs.existsSync(f) && !req.url.startsWith('/morto')) {
       res.writeHead(200, { 'Content-Type': f.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/mp2t' });
       fs.createReadStream(f).pipe(res);
@@ -78,7 +79,8 @@ before(async () => {
   const json = (f, d) => fs.writeFileSync(path.join(RAIZ, f), JSON.stringify(d));
   json('channels.json', [{ id: 'serie', nome: 'Série', grupo: 'Japonês', tipo: 'pasta', origem: 'midia/serie', idiomaLegenda: 'ja' }]);
   json('fontes.json', { listas: [`http://127.0.0.1:${portaFonte}/lista.m3u`,
-    { url: `http://127.0.0.1:${portaFonte}/lista.m3u?2`, grupo: 'Inglês', categorias: ['Movies'] }], testarStreams: false });
+    { url: `http://127.0.0.1:${portaFonte}/lista.m3u?2`, grupo: 'Inglês', categorias: ['Movies'] },
+    { url: `http://127.0.0.1:${portaFonte}/lista.m3u?2&3`, grupo: 'Lutas', nomes: 'UFC|Fight' }], testarStreams: false });
   fs.writeFileSync(path.join(RAIZ, 'python-falso'), PYTHON_FALSO, { mode: 0o755 });
   json('config.json', { qualidades: ['480p', '360p'], segundosSegmento: 2,
     transcricao: { ativo: true, python: path.join(RAIZ, 'python-falso') } });
@@ -196,6 +198,7 @@ test('guia de programação gerado pela pasta da série', async () => {
   const canais = (await (await get(tok('/api/canais'))).json()).canais;
   assert.equal(canais.find(c => c.nome === 'English Movies')?.grupo, 'Inglês');
   assert.equal(canais.some(c => c.nome === 'English News'), false);
+  assert.equal(canais.find(c => c.nome === 'UFC')?.grupo, 'Lutas'); // filtro por nome da 3ª lista
 });
 
 test('painel: só administrador; favoritos aplicados sem reiniciar; validação', async () => {
