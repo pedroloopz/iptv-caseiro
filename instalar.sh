@@ -13,6 +13,7 @@ RAMO="${IPTV_RAMO:-main}"
 CODIGO="${IPTV_CODIGO:-$HOME/iptv-codigo}"     # código (substituído a cada atualização)
 DADOS="${IPTV_DADOS:-$HOME/iptv-dados}"        # seus canais, usuários, vídeos e configurações
 PORTA="${IPTV_PORTA:-8080}"
+FUSO="${IPTV_FUSO:-America/Sao_Paulo}"     # fuso do guia de programação
 ESTUDO="${IPTV_ESTUDO:-1}"
 TRANSCRICAO="${IPTV_TRANSCRICAO:-0}"
 
@@ -110,6 +111,7 @@ WorkingDirectory=$APP
 Environment=IPTV_RAIZ=$DADOS
 Environment=PORT=$PORTA
 Environment=HF_HOME=$DADOS/modelos
+Environment=TZ=$FUSO
 ExecStart=$(command -v node) server.js
 Restart=always
 RestartSec=5
@@ -124,7 +126,7 @@ else
   passo "Sem systemd: ligando em segundo plano (não volta sozinho se o aparelho reiniciar)"
   pkill -f "node server.js" 2>/dev/null || true
   cd "$APP"
-  IPTV_RAIZ="$DADOS" PORT="$PORTA" HF_HOME="$DADOS/modelos" nohup node server.js > "$DADOS/iptv.log" 2>&1 < /dev/null &
+  TZ="$FUSO" IPTV_RAIZ="$DADOS" PORT="$PORTA" HF_HOME="$DADOS/modelos" nohup node server.js > "$DADOS/iptv.log" 2>&1 < /dev/null &
   cd - >/dev/null
 fi
 
